@@ -12,102 +12,52 @@ class FabCar extends Contract {
 
     async initLedger(ctx) {
         console.info('============= START : Initialize Ledger ===========');
-        const cars = [
+        const accounts = [
             {
-                color: 'blue',
-                make: 'Toyota',
-                model: 'Prius',
-                owner: 'Tomoko',
+                bank: 'RBC',
+                balance: 1234.00,
+                owner: 'John',
             },
             {
-                color: 'red',
-                make: 'Ford',
-                model: 'Mustang',
-                owner: 'Brad',
-            },
-            {
-                color: 'green',
-                make: 'Hyundai',
-                model: 'Tucson',
-                owner: 'Jin Soo',
-            },
-            {
-                color: 'yellow',
-                make: 'Volkswagen',
-                model: 'Passat',
+                bank: 'CIBC',
+                balance: 5678.00,
                 owner: 'Max',
             },
-            {
-                color: 'black',
-                make: 'Tesla',
-                model: 'S',
-                owner: 'Adriana',
-            },
-            {
-                color: 'purple',
-                make: 'Peugeot',
-                model: '205',
-                owner: 'Michel',
-            },
-            {
-                color: 'white',
-                make: 'Chery',
-                model: 'S22L',
-                owner: 'Aarav',
-            },
-            {
-                color: 'violet',
-                make: 'Fiat',
-                model: 'Punto',
-                owner: 'Pari',
-            },
-            {
-                color: 'indigo',
-                make: 'Tata',
-                model: 'Nano',
-                owner: 'Valeria',
-            },
-            {
-                color: 'brown',
-                make: 'Holden',
-                model: 'Barina',
-                owner: 'Shotaro',
-            },
+            
         ];
 
-        for (let i = 0; i < cars.length; i++) {
-            cars[i].docType = 'car';
-            await ctx.stub.putState('CAR' + i, Buffer.from(JSON.stringify(cars[i])));
-            console.info('Added <--> ', cars[i]);
+        for (let i = 0; i < accounts.length; i++) {
+            accounts[i].docType = 'account';
+            await ctx.stub.putState('ACCOUNT' + i, Buffer.from(JSON.stringify(accounts[i])));
+            console.info('Added <--> ', accounts[i]);
         }
         console.info('============= END : Initialize Ledger ===========');
     }
 
-    async queryCar(ctx, carNumber) {
-        const carAsBytes = await ctx.stub.getState(carNumber); // get the car from chaincode state
-        if (!carAsBytes || carAsBytes.length === 0) {
-            throw new Error(`${carNumber} does not exist`);
+    async queryAccount(ctx, accountNumber) {
+        const accountAsBytes = await ctx.stub.getState(accountNumber); // get the account from chaincode state
+        if (!accountAsBytes || accountAsBytes.length === 0) {
+            throw new Error(`${accountNumber} does not exist`);
         }
-        console.log(carAsBytes.toString());
-        return carAsBytes.toString();
+        console.log(accountAsBytes.toString());
+        return accountAsBytes.toString();
     }
 
-    async createCar(ctx, carNumber, make, model, color, owner) {
-        console.info('============= START : Create Car ===========');
+    async createAccount(ctx, accountNumber, bank, balance, owner) {
+        console.info('============= START : Create Account ===========');
 
-        const car = {
-            color,
-            docType: 'car',
-            make,
-            model,
+        const account = {
+            bank,
+            docType: 'account',
+            balance,
             owner,
         };
 
-        await ctx.stub.putState(carNumber, Buffer.from(JSON.stringify(car)));
-        console.info('============= END : Create Car ===========');
+        await ctx.stub.putState(accountNumber, Buffer.from(JSON.stringify(account)));
+        console.info('============= END : Create Account ===========');
     }
 
-    async queryAllCars(ctx) {
+    async queryAllAccounts(ctx) {
         const startKey = '';
         const endKey = '';
         const allResults = [];
@@ -126,20 +76,68 @@ class FabCar extends Contract {
         return JSON.stringify(allResults);
     }
 
-    async changeCarOwner(ctx, carNumber, newOwner) {
-        console.info('============= START : changeCarOwner ===========');
+    async deposit(ctx, accountNumber, amount) {
+        console.info('============= START : deposit ===========');
 
-        const carAsBytes = await ctx.stub.getState(carNumber); // get the car from chaincode state
-        if (!carAsBytes || carAsBytes.length === 0) {
-            throw new Error(`${carNumber} does not exist`);
+        const accountAsBytes = await ctx.stub.getState(accountNumber); // get the account from chaincode state
+        if (!accountAsBytes || accountAsBytes.length === 0) {
+            throw new Error(`${accountNumber} does not exist`);
         }
-        const car = JSON.parse(carAsBytes.toString());
-        car.owner = newOwner;
+        const account = JSON.parse(accountAsBytes.toString());
+        let newBalance = parseFloat(account.balance) + parseFloat(amount);
+        account.balance = newBalance;
 
-        await ctx.stub.putState(carNumber, Buffer.from(JSON.stringify(car)));
-        console.info('============= END : changeCarOwner ===========');
+        await ctx.stub.putState(accountNumber, Buffer.from(JSON.stringify(account)));
+        console.info('============= END : deposit ===========');
     }
 
+    async withdraw(ctx, accountNumber, amount) {
+        console.info('============= START : withdraw ===========');
+
+        const accountAsBytes = await ctx.stub.getState(accountNumber); // get the account from chaincode state
+        if (!accountAsBytes || accountAsBytes.length === 0) {
+            throw new Error(`${accountNumber} does not exist`);
+        }
+        const account = JSON.parse(accountAsBytes.toString());
+        if (parseFloat(account.balance) < parseFloat(amount)) {
+            throw new Error(`Insufficient Balance from ${accountNumber1}`);
+        }
+        let newBalance = parseFloat(account.balance) - parseFloat(amount);
+        account.balance = newBalance;
+
+        await ctx.stub.putState(accountNumber, Buffer.from(JSON.stringify(account)));
+        console.info('============= END : withdraw ===========');
+    }
+
+    async transfer(ctx, accountNumber1, accountNumber2, amount) {
+        console.info('============= START : transfer ===========');
+
+        const account1AsBytes = await ctx.stub.getState(accountNumber1); // get the account1 from chaincode state
+        if (!account1AsBytes || account1AsBytes.length === 0) {
+            throw new Error(`${accountNumber1} does not exist`);
+        }
+        const account1 = JSON.parse(account1AsBytes.toString());
+
+        const account2AsBytes = await ctx.stub.getState(accountNumber2); // get the account2 from chaincode state
+        if (!account2AsBytes || account2AsBytes.length === 0) {
+            throw new Error(`${accountNumber2} does not exist`);
+        }
+        const account2 = JSON.parse(account2AsBytes.toString());
+
+        if (parseFloat(account1.balance) < parseFloat(amount)) {
+            throw new Error(`Insufficient Balance from ${accountNumber1}`);
+        }
+
+        let newBalance1 = parseFloat(account1.balance) - parseFloat(amount);
+        account1.balance = newBalance1;
+
+        let newBalance2 = parseFloat(account2.balance) + parseFloat(amount);
+        account2.balance = newBalance2;
+
+        await ctx.stub.putState(accountNumber1, Buffer.from(JSON.stringify(account1)));
+        await ctx.stub.putState(accountNumber2, Buffer.from(JSON.stringify(account2)));
+        console.info('============= END : transfer ===========');
+    }
 }
 
 module.exports = FabCar;
